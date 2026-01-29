@@ -884,6 +884,9 @@
     <data name="Reports.SpendingByCategories.Categories" xml:space="preserve">
         <value>Categories</value>
     </data>
+    <data name="Reports.SpendingByCategories.IncludeTransfers" xml:space="preserve">
+        <value>Include Transfers</value>
+    </data>
     <data name="Reports.IncomeByCategories.Title" xml:space="preserve">
         <value>Income by categories</value>
     </data>
@@ -892,6 +895,9 @@
     </data>
     <data name="Reports.IncomeByCategories.Categories" xml:space="preserve">
         <value>Categories</value>
+    </data>
+    <data name="Reports.IncomeByCategories.IncludeTransfers" xml:space="preserve">
+        <value>Include Transfers</value>
     </data>
     <data name="Total" xml:space="preserve">
         <value>Total</value>

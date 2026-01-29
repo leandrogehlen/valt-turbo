@@ -93,7 +93,9 @@ internal class IncomeByCategoryReport : IIncomeByCategoryReport
 
                     var account = _provider.Accounts[accountId];
 
-                    var transactions = transactionsForDate.Where(x => x.FromAccountId == accountId && (x.Type == TransactionEntityType.Fiat || x.Type == TransactionEntityType.Bitcoin));
+                    var transactions = transactionsForDate.Where(x => x.FromAccountId == accountId &&
+                        (x.Type == TransactionEntityType.Fiat || x.Type == TransactionEntityType.Bitcoin ||
+                         (_filter.IncludeTransfers && IsTransferTransaction(x.Type))));
 
                     foreach (var transaction in transactions)
                     {
@@ -103,8 +105,8 @@ internal class IncomeByCategoryReport : IIncomeByCategoryReport
 
                         if (account.AccountEntityType == AccountEntityType.Bitcoin)
                         {
-                            //only income (positive amounts)
-                            if (transaction.FromSatAmount < 0)
+                            //only income (positive amounts) or transfers
+                            if (transaction.FromSatAmount < 0 && !IsTransferTransaction(transaction.Type))
                                 continue;
 
                             if (!categoryFiatTotals.ContainsKey(transaction.CategoryId))
@@ -113,33 +115,92 @@ internal class IncomeByCategoryReport : IIncomeByCategoryReport
                             var usdBitcoinPrice = _provider.GetUsdBitcoinPriceAt(currentDate);
                             var bitcoin = transaction.FromSatAmount.GetValueOrDefault() / SatoshisPerBitcoin;
 
+                            // For transfers, we want to show incoming transfers as income
+                            if (IsTransferTransaction(transaction.Type) && transaction.Type == TransactionEntityType.BitcoinToBitcoin)
+                            {
+                                // For BitcoinToBitcoin transfers, consider ToSatAmount as incoming if this is the destination account
+                                if (transaction.ToAccountId == accountId && transaction.ToSatAmount.HasValue)
+                                {
+                                    bitcoin = transaction.ToSatAmount.Value / SatoshisPerBitcoin;
+                                }
+                                else
+                                {
+                                    continue; // Skip outgoing transfers
+                                }
+                            }
+                            else if (IsTransferTransaction(transaction.Type) && transaction.Type == TransactionEntityType.FiatToBitcoin)
+                            {
+                                // For FiatToBitcoin transfers, consider ToSatAmount as incoming if this is the destination account
+                                if (transaction.ToAccountId == accountId && transaction.ToSatAmount.HasValue)
+                                {
+                                    bitcoin = transaction.ToSatAmount.Value / SatoshisPerBitcoin;
+                                }
+                                else
+                                {
+                                    continue; // Skip outgoing transfers
+                                }
+                            }
+
                             categoryFiatTotals[transaction.CategoryId] += _provider.GetFiatRateAt(currentDate, _currency) *
                                                                            (bitcoin * usdBitcoinPrice);
                         }
                         else
                         {
-                            //only income (positive amounts)
-                            if (transaction.FromFiatAmount < 0)
+                            //only income (positive amounts) or transfers
+                            if (transaction.FromFiatAmount < 0 && !IsTransferTransaction(transaction.Type))
                                 continue;
 
                             if (!categoryFiatTotals.ContainsKey(transaction.CategoryId))
                                 categoryFiatTotals[transaction.CategoryId] = 0;
 
-                            if (account.Currency == _currency.Code)
+                            decimal amount = transaction.FromFiatAmount.GetValueOrDefault();
+                            string currency = account.Currency;
+
+                            // For transfers, we want to show incoming transfers as income
+                            if (IsTransferTransaction(transaction.Type) && transaction.Type == TransactionEntityType.FiatToFiat)
                             {
-                                categoryFiatTotals[transaction.CategoryId] += transaction.FromFiatAmount.GetValueOrDefault();
+                                // For FiatToFiat transfers, consider ToFiatAmount as incoming if this is the destination account
+                                if (transaction.ToAccountId == accountId && transaction.ToFiatAmount.HasValue)
+                                {
+                                    amount = transaction.ToFiatAmount.Value;
+                                    var toAccount = _provider.Accounts.Values.FirstOrDefault(a => a.Id == transaction.ToAccountId);
+                                    currency = toAccount?.Currency ?? account.Currency;
+                                }
+                                else
+                                {
+                                    continue; // Skip outgoing transfers
+                                }
+                            }
+                            else if (IsTransferTransaction(transaction.Type) && transaction.Type == TransactionEntityType.BitcoinToFiat)
+                            {
+                                // For BitcoinToFiat transfers, consider ToFiatAmount as incoming if this is the destination account
+                                if (transaction.ToAccountId == accountId && transaction.ToFiatAmount.HasValue)
+                                {
+                                    amount = transaction.ToFiatAmount.Value;
+                                    var toAccount = _provider.Accounts.Values.FirstOrDefault(a => a.Id == transaction.ToAccountId);
+                                    currency = toAccount?.Currency ?? account.Currency;
+                                }
+                                else
+                                {
+                                    continue; // Skip outgoing transfers
+                                }
+                            }
+
+                            if (currency == _currency.Code)
+                            {
+                                categoryFiatTotals[transaction.CategoryId] += amount;
                             }
                             else
                             {
                                 // Convert: source currency -> USD -> target currency
-                                var accountCurrency = FiatCurrency.GetFromCode(account.Currency!);
+                                var accountCurrency = FiatCurrency.GetFromCode(currency!);
                                 var sourceRateToUsd = _provider.GetFiatRateAt(currentDate, accountCurrency);
                                 var targetRateFromUsd = _provider.GetFiatRateAt(currentDate, _currency);
 
                                 if (sourceRateToUsd == 0 || targetRateFromUsd == 0)
                                     continue; // Skip if no rate available
 
-                                var convertedBalance = targetRateFromUsd * (transaction.FromFiatAmount.GetValueOrDefault() / sourceRateToUsd);
+                                var convertedBalance = targetRateFromUsd * (amount / sourceRateToUsd);
                                 categoryFiatTotals[transaction.CategoryId] += convertedBalance;
                             }
                         }
@@ -165,6 +226,14 @@ internal class IncomeByCategoryReport : IIncomeByCategoryReport
             var category = _provider.Categories[id];
 
             return category.ParentId is not null ? $"{_provider.Categories[category.ParentId].Name} >> {category.Name}" : $"{category.Name}";
+        }
+
+        private static bool IsTransferTransaction(TransactionEntityType type)
+        {
+            return type is TransactionEntityType.FiatToFiat or
+                         TransactionEntityType.BitcoinToBitcoin or
+                         TransactionEntityType.FiatToBitcoin or
+                         TransactionEntityType.BitcoinToFiat;
         }
     }
 }

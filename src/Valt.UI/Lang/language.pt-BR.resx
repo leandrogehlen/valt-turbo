@@ -3,7 +3,7 @@
 <root>
     <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
         <xsd:element name="root" msdata:IsDataSet="true">
-            
+
         </xsd:element>
     </xsd:schema>
     <resheader name="resmimetype">
@@ -849,6 +849,9 @@
     <data name="Reports.SpendingByCategories.Categories" xml:space="preserve">
         <value>Categorias</value>
     </data>
+    <data name="Reports.SpendingByCategories.IncludeTransfers" xml:space="preserve">
+        <value>Incluir Transferências</value>
+    </data>
     <data name="Reports.IncomeByCategories.Title" xml:space="preserve">
         <value>Receitas por categorias</value>
     </data>
@@ -857,6 +860,9 @@
     </data>
     <data name="Reports.IncomeByCategories.Categories" xml:space="preserve">
         <value>Categorias</value>
+    </data>
+    <data name="Reports.IncomeByCategories.IncludeTransfers" xml:space="preserve">
+        <value>Incluir Transferências</value>
     </data>
     <data name="Total" xml:space="preserve">
         <value>Total</value>

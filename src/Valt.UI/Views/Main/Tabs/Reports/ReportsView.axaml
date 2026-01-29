@@ -312,6 +312,9 @@
                                 MaxListHeight="300"
                                 ItemsSource="{Binding AvailableCategories}"
                                 SelectedItems="{Binding SelectedCategories}" />
+                            <CheckBox IsChecked="{Binding IncludeTransfersInExpenses}"
+                                      Content="{x:Static lang:language.Reports_SpendingByCategories_IncludeTransfers}"
+                                      Margin="0,5,0,0" />
                         </StackPanel>
                         <Panel Grid.Column="1">
                             <Border Background="{DynamicResource Background900Brush}"
@@ -375,6 +378,9 @@
                                 MaxListHeight="300"
                                 ItemsSource="{Binding AvailableCategories}"
                                 SelectedItems="{Binding IncomeSelectedCategories}" />
+                            <CheckBox IsChecked="{Binding IncludeTransfersInIncome}"
+                                      Content="{x:Static lang:language.Reports_IncomeByCategories_IncludeTransfers}"
+                                      Margin="0,5,0,0" />
                         </StackPanel>
                         <Panel Grid.Column="1">
                             <Border Background="{DynamicResource Background900Brush}"

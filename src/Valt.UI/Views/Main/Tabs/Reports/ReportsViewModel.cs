@@ -51,7 +51,7 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
     private readonly ILogger<ReportsViewModel> _logger = null!;
     private readonly AccountsTotalState _accountsTotalState = null!;
     private readonly RatesState _ratesState = null!;
-    
+
     private readonly SecureModeState _secureModeState = null!;
 
     private const long TotalBtcSupplySats = 21_000_000_00_000_000L; // 21 million BTC in sats
@@ -89,6 +89,7 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
     [ObservableProperty] private AvaloniaList<SelectItem> _selectedAccounts = new();
     [ObservableProperty] private AvaloniaList<SelectItem> _availableCategories = new();
     [ObservableProperty] private AvaloniaList<SelectItem> _selectedCategories = new();
+    [ObservableProperty] private bool _includeTransfersInExpenses = false;
 
     // Income by category
     [ObservableProperty] private IncomeByCategoryChartData _incomeByCategoryChartData = new();
@@ -96,6 +97,7 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
     [ObservableProperty] private DateRange _incomeCategoryFilterRange = new(DateTime.MinValue, DateTime.MinValue);
     [ObservableProperty] private AvaloniaList<SelectItem> _incomeSelectedAccounts = new();
     [ObservableProperty] private AvaloniaList<SelectItem> _incomeSelectedCategories = new();
+    [ObservableProperty] private bool _includeTransfersInIncome = false;
 
     private CancellationTokenSource? _filterDebounceTokenSource;
     private CancellationTokenSource? _incomeFilterDebounceTokenSource;
@@ -324,6 +326,22 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
     }
 
     partial void OnIncomeCategoryFilterRangeChanged(DateRange value)
+    {
+        if (!_ready) return;
+
+        IsIncomeByCategoriesLoading = true;
+        FetchIncomeByCategoryWithProviderAsync().SafeFireAndForget(logger: _logger, callerName: nameof(FetchIncomeByCategoryWithProviderAsync));
+    }
+
+    partial void OnIncludeTransfersInExpensesChanged(bool value)
+    {
+        if (!_ready) return;
+
+        IsSpendingByCategoriesLoading = true;
+        FetchExpensesByCategoryWithProviderAsync().SafeFireAndForget(logger: _logger, callerName: nameof(FetchExpensesByCategoryWithProviderAsync));
+    }
+
+    partial void OnIncludeTransfersInIncomeChanged(bool value)
     {
         if (!_ready) return;
 
@@ -583,7 +601,8 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
         {
             var filter = new IExpensesByCategoryReport.Filter(
                 SelectedAccounts.Select(x => new AccountId(x.Id.ToString())).ToList(),
-                SelectedCategories.Select(x => new CategoryId(x.Id.ToString())).ToList());
+                SelectedCategories.Select(x => new CategoryId(x.Id.ToString())).ToList(),
+                IncludeTransfersInExpenses);
 
             var expensesByCategoryData = await _expensesByCategoryReport.GetAsync(
                 DateOnly.FromDateTime(CategoryFilterMainDate),
@@ -612,7 +631,8 @@ public partial class ReportsViewModel : ValtTabViewModel, IDisposable
         {
             var filter = new IIncomeByCategoryReport.Filter(
                 IncomeSelectedAccounts.Select(x => new AccountId(x.Id.ToString())).ToList(),
-                IncomeSelectedCategories.Select(x => new CategoryId(x.Id.ToString())).ToList());
+                IncomeSelectedCategories.Select(x => new CategoryId(x.Id.ToString())).ToList(),
+                IncludeTransfersInIncome);
 
             var incomeByCategoryData = await _incomeByCategoryReport.GetAsync(
                 DateOnly.FromDateTime(IncomeCategoryFilterMainDate),
